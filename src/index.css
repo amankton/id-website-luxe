@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #0D0D12;
+  --accent: #C9A84C;
+  --background: #FAF8F5;
+  --slate: #2A2A35;
+  --ivory: #FAF8F5;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-primary font-sans antialiased;
+    position: relative;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .btn-premium {
+    @apply relative overflow-hidden px-8 py-4 rounded-full transition-all duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)] hover:scale-[1.03] active:scale-[0.98] font-bold tracking-tight shadow-xl hover:shadow-2xl flex items-center justify-center gap-3 uppercase text-xs tracking-widest;
+  }
+  
+  .rounded-premium {
+    @apply rounded-[2rem] md:rounded-[3rem];
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .glass-panel {
+    @apply bg-ivory/80 backdrop-blur-xl border border-primary/5 shadow-xl;
+  }
+
+  .dark-panel {
+    @apply bg-primary text-ivory border border-white/5 shadow-2xl;
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 20px rgba(201, 168, 76, 0.2);
+  }
+
+  .glow-gold-lg {
+    box-shadow: 0 0 40px rgba(201, 168, 76, 0.4);
+  }
+
+  .scanline-overlay {
+    background: linear-gradient(
+      rgba(18, 16, 16, 0) 50%, 
+      rgba(0, 0, 0, 0.25) 50%
+    ), linear-gradient(
+      90deg, 
+      rgba(255, 0, 0, 0.06), 
+      rgba(0, 255, 0, 0.02), 
+      rgba(0, 0, 255, 0.06)
+    );
+    background-size: 100% 4px, 6px 100%;
+  }
+}
+
+/* Custom Utilities */
+.text-balance {
+  text-wrap: balance;
+}
+
+.font-drama {
+  font-family: 'Playfair Display', serif;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+@keyframes scan {
+  0% { top: 0%; }
+  50% { top: 100%; }
+  100% { top: 0%; }
+}
+
+@keyframes pulse-wf {
+  0% { stroke-dashoffset: 1000; opacity: 0.3; }
+  50% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: -1000; opacity: 0.3; }
+}
+
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.04;
+  filter: url(#noiseFilter);
+}
+
+/* Hide scrollbars for absolute visual purity */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 3px;
+}
+
