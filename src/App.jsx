@@ -26,16 +26,16 @@ gsap.registerPlugin(ScrollTrigger);
 // --- SplitText Helper Component for Word-by-Word Reveal ---
 const SplitText = ({ text, className }) => {
   return (
-    <span className={`inline-flex flex-wrap ${className}`}>
+    <span className={`inline ${className}`}>
       {text.split(' ').map((word, i) => (
-        <span 
-          key={i} 
-          className="reveal-word inline-block mr-[0.22em] overflow-hidden leading-tight py-0.5"
-        >
-          <span className="reveal-inner inline-block origin-bottom-left select-none">
-            {word}
+        <React.Fragment key={i}>
+          <span className="reveal-word inline-block overflow-hidden leading-tight py-0.5">
+            <span className="reveal-inner inline-block origin-bottom-left select-none">
+              {word}
+            </span>
           </span>
-        </span>
+          {i !== text.split(' ').length - 1 && ' '}
+        </React.Fragment>
       ))}
     </span>
   );
@@ -46,12 +46,12 @@ const ScrollHighlightText = ({ text, className = "" }) => {
   return (
     <span className={`inline ${className}`}>
       {text.split(' ').map((word, i) => (
-        <span 
-          key={i} 
-          className="highlight-word inline-block mr-[0.22em] leading-tight select-none opacity-20"
-        >
-          {word}
-        </span>
+        <React.Fragment key={i}>
+          <span className="highlight-word inline-block leading-tight select-none opacity-20">
+            {word}
+          </span>
+          {i !== text.split(' ').length - 1 && ' '}
+        </React.Fragment>
       ))}
     </span>
   );
@@ -1398,13 +1398,13 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
       
       <div 
         ref={modalRef}
-        className="relative w-full max-w-2xl bg-primary border border-accent/25 rounded-[2.5rem] p-8 md:p-12 shadow-[0_0_60px_rgba(201,168,76,0.15)] overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[95vh] overflow-y-auto bg-primary border border-accent/25 rounded-[2.5rem] p-8 md:p-12 shadow-[0_0_60px_rgba(201,168,76,0.15)] overscroll-contain"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
         <button 
           onClick={handleClose}
-          className="absolute top-6 right-6 w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-ivory hover:text-accent hover:border-accent/30 transition-all duration-300 group hover:rotate-90"
+          className="absolute top-4 right-4 md:top-6 md:right-6 z-50 w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-ivory hover:text-accent hover:border-accent/30 transition-all duration-300 group hover:rotate-90 bg-primary/80 backdrop-blur-sm"
           aria-label="Close form"
         >
           <X size={16} />
