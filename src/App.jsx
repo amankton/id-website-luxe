@@ -84,9 +84,9 @@ const Navbar = ({ onRequestAccess }) => {
         }`}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-full border transition-all duration-500 bg-ivory flex items-center justify-center overflow-hidden ${isScrolled ? 'border-primary/10' : 'border-white/20'}`}>
+          <div className={`w-14 h-14 rounded-full border transition-all duration-500 bg-primary flex items-center justify-center overflow-hidden ${isScrolled ? 'border-accent/40' : 'border-accent/30'}`}>
             <img 
-              src="https://qrdldhhcebervlmlwfbx.supabase.co/storage/v1/object/public/Inked%20Draw%20Images/id-logo-b.png" 
+              src="https://qrdldhhcebervlmlwfbx.supabase.co/storage/v1/object/public/Inked%20Draw%20Images/id-logo.png" 
               alt="Inked Draw Logo" 
               className="h-[calc(100%-4px)] w-[calc(100%-4px)] object-contain transition-all duration-500"
             />
