@@ -1160,12 +1160,31 @@ const GeoAuthority = () => {
   ];
 
   return (
-    <section className="py-40 px-8 bg-ivory text-primary">
+    <section className="py-32 md:py-40 px-6 md:px-8 bg-ivory text-primary overflow-hidden">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-24 max-w-4xl">
-          <div className="text-accent font-mono text-[10px] uppercase tracking-[0.5em] mb-8 font-bold">Digital humidor authority</div>
-          <h2 className="text-5xl md:text-8xl font-bold tracking-tighter leading-none mb-10 text-primary">What is <span className="font-drama italic text-accent">Inked Draw?</span></h2>
-          <p className="text-primary/55 text-lg md:text-2xl leading-relaxed font-medium">Inked Draw is a private digital humidor app for premium cigar collectors and aficionados. It combines cigar collection tracking, tasting notes, cigar band scanning, lounge discovery, and rare cigar cataloging into one refined experience.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(280px,410px)] items-center gap-16 lg:gap-24 mb-24">
+          <div className="max-w-4xl">
+            <div className="text-accent font-mono text-[10px] uppercase tracking-[0.5em] mb-8 font-bold">Digital humidor authority</div>
+            <h2 className="text-5xl md:text-8xl font-bold tracking-tighter leading-none mb-10 text-primary">What is <span className="font-drama italic text-accent">Inked Draw?</span></h2>
+            <p className="text-primary/55 text-lg md:text-2xl leading-relaxed font-medium">Inked Draw is a private digital humidor app for premium cigar collectors and aficionados. It combines cigar collection tracking, tasting notes, cigar band scanning, lounge discovery, and rare cigar cataloging into one refined experience.</p>
+          </div>
+
+          <div className="relative mx-auto w-full max-w-[300px] sm:max-w-[340px] md:max-w-[380px] lg:ml-auto lg:max-w-[390px]">
+            <div className="absolute -inset-8 rounded-[4rem] bg-accent/10 blur-3xl" />
+            <div className="relative overflow-hidden rounded-[3.25rem] bg-primary p-1.5 shadow-[0_32px_90px_rgba(13,13,18,0.22)] ring-1 ring-primary/10">
+              <video
+                className="aspect-[9/16] w-full rounded-[2.85rem] bg-primary object-cover"
+                src="/inked-draw-phone-demo.mp4"
+                poster="/inked-draw-phone-demo-preview.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label="Inked Draw iPhone app preview"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-16">
@@ -1619,12 +1638,12 @@ function App() {
       <Navbar onRequestAccess={() => openRequestModal()} />
       <main>
         <Hero onRequestAccess={() => openRequestModal()} />
+        <GeoAuthority />
         <Features />
         <Philosophy />
         <Protocol />
         <Membership onRequestAccess={(tier) => openRequestModal(tier)} />
         <Testimonials />
-        <GeoAuthority />
         
         {/* Final CTA */}
         <section className="py-64 px-8 bg-ivory text-center relative overflow-hidden">
