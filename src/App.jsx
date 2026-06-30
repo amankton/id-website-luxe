@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
@@ -22,6 +22,13 @@ import {
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
+
+const ACTIVATION_PATH = '/activate';
+
+const getActivationRedirectUrl = () => {
+  if (typeof window === 'undefined') return undefined;
+  return `${window.location.origin}${ACTIVATION_PATH}`;
+};
 
 // --- SplitText Helper Component for Word-by-Word Reveal ---
 const SplitText = ({ text, className }) => {
@@ -358,7 +365,7 @@ const Card1_Shuffler = () => {
 
 const Card2_Typewriter = () => {
   const [text, setText] = useState("");
-  const lines = [
+  const lines = useMemo(() => [
     "> INITIALIZING SESSION LEDGER...",
     "> IDENTIFIED: PADRÓN 1964 ANNIVERSARY",
     "> ANALYSIS: DRAW 94% | BURN 98% | BODY: MED-FULL",
@@ -367,7 +374,7 @@ const Card2_Typewriter = () => {
     "> CO-ORDINATES: PRIVATE SUITE, 21:42 PST",
     "> LEDGER DEPOSITED IN WAITLIST VAULT.",
     "> READY FOR THE NEXT DRAW."
-  ];
+  ], []);
 
   useEffect(() => {
     let currentLineIdx = 0;
@@ -403,7 +410,7 @@ const Card2_Typewriter = () => {
 
     typeChar();
     return () => clearTimeout(typingTimer);
-  }, []);
+  }, [lines]);
 
   return (
     <div className="dark-panel rounded-3xl p-6 font-mono text-[10px] h-48 flex flex-col justify-between relative overflow-hidden scanline-overlay">
@@ -1290,6 +1297,140 @@ const Footer = () => (
   </footer>
 );
 
+const ActivationPage = () => {
+  const [activationState, setActivationState] = useState('checking');
+  const [activationEmail, setActivationEmail] = useState('');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const resolveSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      if (!isMounted) return;
+
+      if (error) {
+        setActivationState('error');
+        return;
+      }
+
+      if (data.session?.user?.email) {
+        setActivationEmail(data.session.user.email);
+        setActivationState('active');
+
+        if (window.location.hash || window.location.search) {
+          window.history.replaceState(null, '', ACTIVATION_PATH);
+        }
+        return;
+      }
+
+      setActivationState('missing');
+    };
+
+    const timer = window.setTimeout(resolveSession, 600);
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted || !session?.user?.email) return;
+      setActivationEmail(session.user.email);
+      setActivationState('active');
+
+      if (window.location.hash || window.location.search) {
+        window.history.replaceState(null, '', ACTIVATION_PATH);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(timer);
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const copyByState = {
+    checking: {
+      label: 'Verifying Link',
+      title: 'Activating your early access',
+      body: 'Hold tight while we verify the secure link from your email.',
+      action: null,
+    },
+    active: {
+      label: 'Access Activated',
+      title: 'Your email is verified',
+      body: `${activationEmail || 'This email'} is now tied to your Inked Draw early access request. Use this same email when the private app opens.`,
+      action: 'Return to Inked Draw',
+    },
+    missing: {
+      label: 'Link Needs Refresh',
+      title: 'No active session found',
+      body: 'Open the latest activation email on this device. If the link has expired, return to the site and request a fresh early access email.',
+      action: 'Request a New Link',
+    },
+    error: {
+      label: 'Activation Fault',
+      title: 'We could not verify that link',
+      body: 'Your request may still be recorded. Return to the site and request a new activation email using the same address.',
+      action: 'Try Again',
+    },
+  };
+
+  const content = copyByState[activationState];
+
+  return (
+    <div className="min-h-screen bg-primary text-ivory relative overflow-hidden flex items-center justify-center px-6 py-16">
+      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_50%_10%,rgba(201,168,76,0.35),transparent_34%),radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.12),transparent_28%)]" />
+      <div className="noise-overlay" />
+
+      <main className="relative z-10 w-full max-w-2xl text-center">
+        <div className="mx-auto mb-10 w-24 h-24 rounded-full border border-accent/30 bg-black/30 flex items-center justify-center shadow-[0_0_60px_rgba(201,168,76,0.14)]">
+          {activationState === 'checking' ? (
+            <div className="w-9 h-9 border-2 border-accent/20 border-t-accent rounded-full animate-spin" />
+          ) : activationState === 'active' ? (
+            <Check size={34} className="text-accent" />
+          ) : (
+            <Shield size={34} className="text-accent" />
+          )}
+        </div>
+
+        <div className="text-accent font-mono text-[10px] uppercase tracking-[0.45em] mb-6 font-bold">
+          {content.label}
+        </div>
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tighter leading-none mb-8">
+          {content.title}
+        </h1>
+        <p className="text-ivory/60 text-base md:text-lg leading-relaxed font-medium max-w-xl mx-auto mb-10">
+          {content.body}
+        </p>
+
+        {activationState === 'active' && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-10 text-left">
+            {[
+              'Keep your queue reference from the request screen.',
+              'Use this verified email for private app access.',
+              'Watch for the opening notice when your tier is released.'
+            ].map((step, index) => (
+              <div key={step} className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <div className="text-accent font-mono text-[10px] mb-3">0{index + 1}</div>
+                <p className="text-ivory/55 text-sm leading-relaxed font-medium">{step}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {content.action && (
+          <button
+            onClick={() => { window.location.href = '/'; }}
+            className="btn-premium group bg-accent text-primary px-10 py-4 text-[10px] uppercase tracking-widest font-bold mx-auto"
+          >
+            <span className="relative z-10 flex items-center gap-3">
+              {content.action}
+              <ArrowRight size={14} />
+            </span>
+            <span className="absolute inset-0 bg-ivory translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]" />
+          </button>
+        )}
+      </main>
+    </div>
+  );
+};
+
 // --- Request Access Modal Component ---
 
 const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
@@ -1302,6 +1443,7 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
   const [errorMessage, setErrorMessage] = useState("");
   const [systemLogs, setSystemLogs] = useState([]);
   const [memberId, setMemberId] = useState("");
+  const [activationEmailStatus, setActivationEmailStatus] = useState("idle");
 
   const modalRef = useRef(null);
   const overlayRef = useRef(null);
@@ -1325,6 +1467,7 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
       setStatus("idle");
       setErrorMessage("");
       setSystemLogs([]);
+      setActivationEmailStatus("idle");
 
       let ctx = gsap.context(() => {
         gsap.to(overlayRef.current, {
@@ -1391,6 +1534,25 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
 
       if (error) throw error;
 
+      setSystemLogs(prev => [...prev, "> DISPATCHING ACTIVATION INSTRUCTIONS..."]);
+
+      const { error: activationError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: getActivationRedirectUrl(),
+          shouldCreateUser: true,
+        },
+      });
+
+      if (activationError) {
+        setActivationEmailStatus("failed");
+        setErrorMessage(activationError.message || "Request received, but the activation email could not be sent.");
+        setSystemLogs(prev => [...prev, "> REQUEST RECORDED. ACTIVATION EMAIL REQUIRES RETRY."]);
+      } else {
+        setActivationEmailStatus("sent");
+        setSystemLogs(prev => [...prev, "> ACTIVATION INSTRUCTIONS SENT."]);
+      }
+
       const randomId = Math.floor(1000 + Math.random() * 9000);
       setMemberId(`ID-2026-${randomId}`);
       
@@ -1440,8 +1602,9 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Full Name</label>
+                <label htmlFor="full-name" className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Full Name</label>
                 <input 
+                  id="full-name"
                   type="text" 
                   required
                   value={fullName}
@@ -1452,8 +1615,9 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Email Address</label>
+                <label htmlFor="email-address" className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Email Address</label>
                 <input 
+                  id="email-address"
                   type="email" 
                   required
                   value={email}
@@ -1466,11 +1630,12 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Membership Tier</label>
+                <label htmlFor="membership-tier" className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Membership Tier</label>
                 <select 
+                  id="membership-tier"
                   value={collectionSize}
                   onChange={(e) => setCollectionSize(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-ivory focus:outline-none focus:border-accent transition-colors font-sans text-sm cursor-pointer"
+                  className="membership-tier-select w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-ivory focus:outline-none focus:border-accent transition-colors font-sans text-sm cursor-pointer"
                   style={{ colorScheme: 'dark' }}
                 >
                   <option value="Founding Circle">Founding Circle (01)</option>
@@ -1480,8 +1645,9 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Primary Cigar Lounge</label>
+                <label htmlFor="primary-cigar-lounge" className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Primary Cigar Lounge</label>
                 <input 
+                  id="primary-cigar-lounge"
                   type="text"
                   value={favoriteLounge}
                   onChange={(e) => setFavoriteLounge(e.target.value)}
@@ -1492,8 +1658,9 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Aficionado Profile</label>
+              <label htmlFor="aficionado-profile" className="text-[9px] uppercase tracking-widest font-bold text-accent font-mono">Aficionado Profile</label>
               <textarea 
+                id="aficionado-profile"
                 rows="3"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -1531,13 +1698,30 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
             </div>
             <div className="text-green-500 font-mono text-[9px] uppercase tracking-[0.4em] mb-3 font-bold flex items-center gap-1.5 justify-center">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
-              Enrollment Secured
+              {activationEmailStatus === "sent" ? "Instructions Sent" : "Enrollment Secured"}
             </div>
-            <h2 className="text-3xl font-bold tracking-tight text-ivory mb-4">Request Received</h2>
-            <p className="text-ivory/60 text-sm max-w-sm leading-relaxed mb-8 font-medium mx-auto">
-              Your palate ledger has been safely recorded in the private reserve database. We review submissions manually.
+            <h2 className="text-3xl font-bold tracking-tight text-ivory mb-4">
+              {activationEmailStatus === "sent" ? "Check Your Email" : "Request Received"}
+            </h2>
+            <p className="text-ivory/60 text-sm max-w-md leading-relaxed mb-6 font-medium mx-auto">
+              {activationEmailStatus === "sent"
+                ? `Activation instructions were sent to ${email}. Open the secure link to verify this address and activate your early access profile.`
+                : "Your request is recorded, but the activation email could not be sent automatically. Keep this reference ID and request a fresh link in a moment."}
             </p>
-            
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8 w-full">
+              {[
+                'Open the activation email.',
+                'Tap the secure access link.',
+                'Use this email when the app opens.'
+              ].map((step, index) => (
+                <div key={step} className="bg-white/[0.035] border border-white/10 rounded-2xl p-4 text-left">
+                  <div className="text-accent font-mono text-[8px] uppercase tracking-widest mb-2">Step 0{index + 1}</div>
+                  <p className="text-ivory/55 text-xs leading-relaxed font-medium">{step}</p>
+                </div>
+              ))}
+            </div>
+             
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 font-mono text-xs text-ivory/80 mb-8 max-w-xs w-full mx-auto">
               <div className="text-[8px] uppercase tracking-widest text-ivory/40 mb-1">Queue Reference ID</div>
               <div className="text-accent font-bold tracking-widest">{memberId}</div>
@@ -1585,6 +1769,7 @@ function App() {
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [prefilledTier, setPrefilledTier] = useState("");
   const lenisRef = useRef(null);
+  const isActivationRoute = typeof window !== 'undefined' && window.location.pathname === ACTIVATION_PATH;
 
   const openRequestModal = (tier = "") => {
     setPrefilledTier(tier);
@@ -1629,6 +1814,10 @@ function App() {
       lenisRef.current.start();
     }
   }, [isRequestModalOpen]);
+
+  if (isActivationRoute) {
+    return <ActivationPage />;
+  }
 
   return (
     <div className="selection:bg-accent selection:text-primary overflow-x-hidden">

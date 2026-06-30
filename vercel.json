@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/activate",
+      "destination": "/"
+    }
+  ]
+}

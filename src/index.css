@@ -59,6 +59,16 @@
     );
     background-size: 100% 4px, 6px 100%;
   }
+
+  .membership-tier-select option {
+    background-color: var(--primary);
+    color: var(--ivory);
+  }
+
+  .membership-tier-select option:checked {
+    background-color: var(--accent);
+    color: var(--primary);
+  }
 }
 
 /* Custom Utilities */
@@ -106,4 +116,3 @@
   background: var(--accent);
   border-radius: 3px;
 }
-
