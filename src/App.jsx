@@ -14,6 +14,7 @@ import {
   Shield, 
   Clock,
   ArrowRight,
+  ArrowUp,
   Play,
   Layers,
   Activity,
@@ -67,7 +68,7 @@ const ScrollHighlightText = ({ text, className = "" }) => {
 
 // --- Sub-Components ---
 
-const Navbar = ({ onRequestAccess }) => {
+const Navbar = ({ onRequestAccess, onReturnToTop }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navRef = useRef(null);
@@ -90,7 +91,12 @@ const Navbar = ({ onRequestAccess }) => {
           : 'bg-transparent w-[95%] max-w-7xl border-white/5'
         }`}
       >
-        <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onReturnToTop}
+          className="flex items-center gap-3 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-4 focus-visible:ring-offset-transparent"
+          aria-label="Return to top"
+        >
           <div className={`w-14 h-14 rounded-full border transition-all duration-500 bg-primary flex items-center justify-center overflow-hidden ${isScrolled ? 'border-accent/40' : 'border-accent/30'}`}>
             <img 
               src="https://qrdldhhcebervlmlwfbx.supabase.co/storage/v1/object/public/Inked%20Draw%20Images/id-logo.png" 
@@ -101,7 +107,7 @@ const Navbar = ({ onRequestAccess }) => {
           <span className={`font-bold tracking-tighter text-lg transition-colors duration-500 ${isScrolled ? 'text-primary' : 'text-ivory'}`}>
             Inked Draw
           </span>
-        </div>
+        </button>
 
         <div className="hidden md:flex items-center gap-8">
           {[
@@ -1240,10 +1246,10 @@ const Footer = () => (
         <div className="lg:col-span-2">
           <div className="flex items-center gap-4 mb-10">
             <div className="w-24 h-24 rounded-full border border-accent/30 bg-primary flex items-center justify-center">
-               <img 
+              <img 
                 src="https://qrdldhhcebervlmlwfbx.supabase.co/storage/v1/object/public/Inked%20Draw%20Images/id-logo-b.png" 
                 alt="Inked Draw Logo" 
-                className="h-16 w-auto brightness-0 invert"
+                className="h-20 w-20 object-contain"
               />
             </div>
             <span className="text-2xl font-bold tracking-tighter">Inked Draw</span>
@@ -1431,6 +1437,33 @@ const ActivationPage = () => {
   );
 };
 
+const ReturnToTopButton = ({ onReturnToTop }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsVisible(window.scrollY > 700);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <button
+      type="button"
+      onClick={onReturnToTop}
+      aria-label="Return to top"
+      className={`fixed bottom-6 right-6 z-[120] h-14 w-14 rounded-full border border-accent/30 bg-primary/85 text-accent shadow-[0_18px_45px_rgba(0,0,0,0.35)] backdrop-blur-xl flex items-center justify-center transition-all duration-500 hover:bg-accent hover:text-primary hover:border-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0 pointer-events-none'
+      }`}
+    >
+      <ArrowUp size={20} strokeWidth={2.2} />
+    </button>
+  );
+};
+
 // --- Request Access Modal Component ---
 
 const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
@@ -1545,6 +1578,7 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
       });
 
       if (activationError) {
+        console.error("Activation email failed:", activationError);
         setActivationEmailStatus("failed");
         setErrorMessage(activationError.message || "Request received, but the activation email could not be sent.");
         setSystemLogs(prev => [...prev, "> REQUEST RECORDED. ACTIVATION EMAIL REQUIRES RETRY."]);
@@ -1721,6 +1755,15 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
                 </div>
               ))}
             </div>
+
+            {activationEmailStatus === "failed" && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 mb-8 max-w-md mx-auto text-left">
+                <div className="text-red-300 font-mono text-[8px] uppercase tracking-widest mb-2">Activation Email Not Sent</div>
+                <p className="text-red-100/75 text-xs leading-relaxed font-medium">
+                  {errorMessage}
+                </p>
+              </div>
+            )}
              
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 font-mono text-xs text-ivory/80 mb-8 max-w-xs w-full mx-auto">
               <div className="text-[8px] uppercase tracking-widest text-ivory/40 mb-1">Queue Reference ID</div>
@@ -1776,6 +1819,15 @@ function App() {
     setIsRequestModalOpen(true);
   };
 
+  const returnToTop = () => {
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(0);
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const lenis = new Lenis({
@@ -1824,7 +1876,7 @@ function App() {
       {/* Global Noise Overlay */}
       <div className="noise-overlay" />
       
-      <Navbar onRequestAccess={() => openRequestModal()} />
+      <Navbar onRequestAccess={() => openRequestModal()} onReturnToTop={returnToTop} />
       <main>
         <Hero onRequestAccess={() => openRequestModal()} />
         <GeoAuthority />
@@ -1854,6 +1906,7 @@ function App() {
         </section>
       </main>
       <Footer />
+      <ReturnToTopButton onReturnToTop={returnToTop} />
 
       <RequestAccessModal 
         isOpen={isRequestModalOpen}
