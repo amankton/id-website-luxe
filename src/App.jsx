@@ -26,9 +26,54 @@ gsap.registerPlugin(ScrollTrigger);
 
 const ACTIVATION_PATH = '/activate';
 
+const normalizeEmail = (value = '') => value.trim().toLowerCase();
+
 const getActivationRedirectUrl = () => {
   if (typeof window === 'undefined') return undefined;
   return `${window.location.origin}${ACTIVATION_PATH}`;
+};
+
+const markAccessRequestActivated = async (email) => {
+  const normalizedEmail = normalizeEmail(email);
+
+  if (!normalizedEmail) {
+    return { state: 'missingRequest' };
+  }
+
+  const { data: activatedRows, error: activationError } = await supabase
+    .from('access_requests')
+    .update({ status: 'activated' })
+    .eq('email', normalizedEmail)
+    .eq('status', 'pending')
+    .select('id, status');
+
+  if (activationError) {
+    throw activationError;
+  }
+
+  if (activatedRows?.length) {
+    return { state: 'active' };
+  }
+
+  const { data: existingRows, error: lookupError } = await supabase
+    .from('access_requests')
+    .select('id, status')
+    .eq('email', normalizedEmail)
+    .limit(1);
+
+  if (lookupError) {
+    throw lookupError;
+  }
+
+  if (!existingRows?.length) {
+    return { state: 'missingRequest' };
+  }
+
+  if (existingRows[0].status === 'pending') {
+    throw new Error('The request was found, but its status did not update.');
+  }
+
+  return { state: 'active' };
 };
 
 // --- SplitText Helper Component for Word-by-Word Reveal ---
@@ -1306,26 +1351,53 @@ const Footer = () => (
 const ActivationPage = () => {
   const [activationState, setActivationState] = useState('checking');
   const [activationEmail, setActivationEmail] = useState('');
+  const [activationErrorDetail, setActivationErrorDetail] = useState('');
 
   useEffect(() => {
     let isMounted = true;
+    let hasResolvedActivation = false;
+
+    const cleanActivationUrl = () => {
+      if (window.location.hash || window.location.search) {
+        window.history.replaceState(null, '', ACTIVATION_PATH);
+      }
+    };
+
+    const syncActivatedSession = async (session) => {
+      if (!isMounted || hasResolvedActivation || !session?.user?.email) return;
+
+      hasResolvedActivation = true;
+      const verifiedEmail = normalizeEmail(session.user.email);
+      setActivationEmail(verifiedEmail);
+
+      try {
+        const result = await markAccessRequestActivated(verifiedEmail);
+        if (!isMounted) return;
+        setActivationState(result.state);
+      } catch (err) {
+        console.error('Access request activation failed:', err);
+        if (!isMounted) return;
+        setActivationErrorDetail(err.message || 'The request status could not be updated.');
+        setActivationState('syncError');
+      } finally {
+        if (isMounted) {
+          cleanActivationUrl();
+        }
+      }
+    };
 
     const resolveSession = async () => {
       const { data, error } = await supabase.auth.getSession();
-      if (!isMounted) return;
+      if (!isMounted || hasResolvedActivation) return;
 
       if (error) {
+        setActivationErrorDetail(error.message || '');
         setActivationState('error');
         return;
       }
 
-      if (data.session?.user?.email) {
-        setActivationEmail(data.session.user.email);
-        setActivationState('active');
-
-        if (window.location.hash || window.location.search) {
-          window.history.replaceState(null, '', ACTIVATION_PATH);
-        }
+      if (data.session) {
+        await syncActivatedSession(data.session);
         return;
       }
 
@@ -1334,13 +1406,7 @@ const ActivationPage = () => {
 
     const timer = window.setTimeout(resolveSession, 600);
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!isMounted || !session?.user?.email) return;
-      setActivationEmail(session.user.email);
-      setActivationState('active');
-
-      if (window.location.hash || window.location.search) {
-        window.history.replaceState(null, '', ACTIVATION_PATH);
-      }
+      syncActivatedSession(session);
     });
 
     return () => {
@@ -1360,7 +1426,19 @@ const ActivationPage = () => {
     active: {
       label: 'Access Activated',
       title: 'Your email is verified',
-      body: `${activationEmail || 'This email'} is now tied to your Inked Draw early access request. Use this same email when the private app opens.`,
+      body: `${activationEmail || 'This email'} is verified and your early access request is marked activated. Use this same email when the private app opens.`,
+      action: 'Return to Inked Draw',
+    },
+    missingRequest: {
+      label: 'Email Verified',
+      title: 'Request not found',
+      body: `${activationEmail || 'This email'} is verified, but no matching early access request was found in the ledger. Return to the site and submit the form again with this same email.`,
+      action: 'Request Access',
+    },
+    syncError: {
+      label: 'Email Verified',
+      title: 'Ledger sync needs review',
+      body: `${activationEmail || 'This email'} is verified, but the request status could not be updated automatically. ${activationErrorDetail || 'Return to the site and try the latest activation link again.'}`,
       action: 'Return to Inked Draw',
     },
     missing: {
@@ -1372,7 +1450,7 @@ const ActivationPage = () => {
     error: {
       label: 'Activation Fault',
       title: 'We could not verify that link',
-      body: 'Your request may still be recorded. Return to the site and request a new activation email using the same address.',
+      body: `Your request may still be recorded. ${activationErrorDetail || 'Return to the site and request a new activation email using the same address.'}`,
       action: 'Try Again',
     },
   };
@@ -1552,15 +1630,17 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
     }
 
     try {
+      const requestedEmail = normalizeEmail(email);
+
       const { error } = await supabase
         .from('access_requests')
         .insert([
           {
-            full_name: fullName,
-            email: email,
+            full_name: fullName.trim(),
+            email: requestedEmail,
             collection_size: collectionSize,
-            favorite_lounge: favoriteLounge,
-            reason: reason,
+            favorite_lounge: favoriteLounge.trim(),
+            reason: reason.trim(),
             status: 'pending'
           }
         ]);
@@ -1570,7 +1650,7 @@ const RequestAccessModal = ({ isOpen, onClose, prefilledTier }) => {
       setSystemLogs(prev => [...prev, "> DISPATCHING ACTIVATION INSTRUCTIONS..."]);
 
       const { error: activationError } = await supabase.auth.signInWithOtp({
-        email,
+        email: requestedEmail,
         options: {
           emailRedirectTo: getActivationRedirectUrl(),
           shouldCreateUser: true,
